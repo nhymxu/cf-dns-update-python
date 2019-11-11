@@ -1,0 +1,10 @@
+[common]
+CF_API_TOKEN = xxx
+
+[dungnt.net]
+zone_id = xxx
+record = test.dungnt.net
+
+[nhymxu.info]
+zone_id = xxx
+record = yyy.nhymxu.info
