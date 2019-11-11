@@ -90,10 +90,10 @@ def update_host(zone_id, record_name):
         return False
 
     public_ip = get_local_ip()
+    print("Public IP: {}".format(public_ip))
     if public_ip == get_old_ip():
+        print("Skip update {}".format(record_name))
         return False
-
-    save_old_ip(public_ip)
 
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}".format(
         zone_id,
@@ -114,7 +114,12 @@ def update_host(zone_id, record_name):
     data = json.loads(response)
 
     if not data['success']:
+        print("Failed to update {}:{}".format(record_name, public_ip))
         return False
+
+    print("Success update {}:{}".format(record_name, public_ip))
+
+    save_old_ip(public_ip)
 
     return True
 
