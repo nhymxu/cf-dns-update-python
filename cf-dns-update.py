@@ -4,6 +4,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+old_ip = None
+
 
 def make_request(method="GET", url="", request_body=None):
     headers = {
@@ -11,8 +13,10 @@ def make_request(method="GET", url="", request_body=None):
         'Content-Type': 'application/json'
     }
 
-    data = urllib.parse.urlencode(request_body)
-    data = data.encode('ascii')
+    data = None
+    if request_body:
+        data = urllib.parse.urlencode(request_body)
+        data = data.encode('ascii')
 
     try:
         req = urllib.request.Request(url, headers=headers, data=data, method=method)
@@ -33,7 +37,28 @@ def get_local_ip():
     Get current public IP of server
     :return: string
     """
-    pass
+    endpoint = "https://checkip.amazonaws.com/"
+
+    return make_request(url=endpoint).strip()
+
+
+def get_old_ip():
+    """
+
+    :return:
+    """
+    global old_ip
+
+    if not old_ip:
+        with open('old_ip.txt', 'r') as fp:
+            old_ip = fp.read().strip()
+
+    return old_ip
+
+
+def save_old_ip(ip):
+    with open('old_ip.txt', 'w+') as fp:
+        fp.write(ip)
 
 
 def get_record_id(zone_id, record_name):
@@ -63,21 +88,41 @@ def update_host(zone_id, record_name):
     if not record_id:
         return False
 
+    public_ip = get_local_ip()
+    if public_ip == get_old_ip():
+        return False
+
+    save_old_ip(public_ip)
+
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}".format(
         zone_id,
         record_id
     )
 
-    body = '{"type":"A","name":"$2","content":"$ip"}'
+    payload = {
+        "type": "A",
+        "name": record_name,
+        "content": public_ip
+    }
 
-    make_request("PUT", endpoint, body)
+    response = make_request(
+        method="PUT",
+        url=endpoint,
+        request_body=json.dumps(payload)
+    )
+    data = json.loads(response)
+
+    if not data['success']:
+        return False
+
+    return True
 
 
 config_file = 'config.ini'
 
 config = configparser.ConfigParser()
-
 config.read(config_file)
+
 
 if "common" not in config:
     raise Exception("Common config not found.")
@@ -95,4 +140,4 @@ if not config_sections:
 
 
 for domain in config_sections:
-    update_host(domain['zone_id'], domain['record'])
+    update_host(config[domain]['zone_id'], config[domain]['record'])
