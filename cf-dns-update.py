@@ -5,9 +5,6 @@ import urllib.parse
 import urllib.request
 from os import path
 
-old_ip = None
-public_ip = None
-
 
 def make_request(method="GET", url="", request_body=None):
     headers = {
@@ -39,13 +36,9 @@ def get_local_ip():
     Get current public IP of server
     :return: string
     """
-    global public_ip
+    endpoint = "https://checkip.amazonaws.com/"
 
-    if not public_ip:
-        endpoint = "https://checkip.amazonaws.com/"
-        public_ip = make_request(url=endpoint).strip().decode('utf-8')
-
-    return public_ip
+    return make_request(url=endpoint).strip().decode('utf-8')
 
 
 def get_old_ip():
@@ -53,9 +46,9 @@ def get_old_ip():
 
     :return:
     """
-    global old_ip
+    old_ip = None
 
-    if not old_ip and path.exists("old_ip.txt"):
+    if path.exists("old_ip.txt"):
         with open('old_ip.txt', 'r') as fp:
             old_ip = fp.read().strip()
 
@@ -94,12 +87,6 @@ def update_host(zone_id, record_name):
     if not record_id:
         return False
 
-    public_ip = get_local_ip()
-    print("Public IP: {}".format(public_ip))
-    if public_ip == get_old_ip():
-        print("Skip update {}".format(record_name))
-        return False
-
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}".format(
         zone_id,
         record_id
@@ -123,8 +110,6 @@ def update_host(zone_id, record_name):
         return False
 
     print("Success update {}:{}".format(record_name, public_ip))
-
-    save_old_ip(public_ip)
 
     return True
 
@@ -151,5 +136,15 @@ config_sections.remove("common")
 if not config_sections:
     raise Exception("Empty site to update DNS")
 
+public_ip = get_local_ip()
+print("Public IP: {}".format(public_ip))
+if public_ip == get_old_ip():
+    print("Skip update")
+    exit()
+
 for domain in config_sections:
+    print("--- Updating {} ---".format(domain))
     update_host(config[domain]['zone_id'], config[domain]['record'])
+
+print("Save old IP")
+save_old_ip(public_ip)
