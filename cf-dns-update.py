@@ -6,6 +6,7 @@ import urllib.request
 from os import path
 
 old_ip = None
+public_ip = None
 
 
 def make_request(method="GET", url="", request_body=None):
@@ -38,9 +39,13 @@ def get_local_ip():
     Get current public IP of server
     :return: string
     """
-    endpoint = "https://checkip.amazonaws.com/"
+    global public_ip
 
-    return make_request(url=endpoint).strip().decode('utf-8')
+    if not public_ip:
+        endpoint = "https://checkip.amazonaws.com/"
+        public_ip = make_request(url=endpoint).strip().decode('utf-8')
+
+    return public_ip
 
 
 def get_old_ip():
