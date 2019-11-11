@@ -3,6 +3,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from os import path
 
 old_ip = None
 
@@ -39,7 +40,7 @@ def get_local_ip():
     """
     endpoint = "https://checkip.amazonaws.com/"
 
-    return make_request(url=endpoint).strip()
+    return make_request(url=endpoint).strip().decode('utf-8')
 
 
 def get_old_ip():
@@ -49,7 +50,7 @@ def get_old_ip():
     """
     global old_ip
 
-    if not old_ip:
+    if not old_ip and path.exists("old_ip.txt"):
         with open('old_ip.txt', 'r') as fp:
             old_ip = fp.read().strip()
 
@@ -120,9 +121,11 @@ def update_host(zone_id, record_name):
 
 config_file = 'config.ini'
 
+if not path.exists(config_file):
+    raise RuntimeError("config file not found")
+
 config = configparser.ConfigParser()
 config.read(config_file)
-
 
 if "common" not in config:
     raise Exception("Common config not found.")
@@ -137,7 +140,6 @@ config_sections.remove("common")
 
 if not config_sections:
     raise Exception("Empty site to update DNS")
-
 
 for domain in config_sections:
     update_host(config[domain]['zone_id'], config[domain]['record'])
