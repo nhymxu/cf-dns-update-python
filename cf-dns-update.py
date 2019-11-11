@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+
+"""
+Dynamic DNS record update utility for CloudFlare DNS service.
+(c) Dung Nguyen (nhymxu)
+"""
+
 import configparser
 import json
 import urllib.error
@@ -36,6 +43,14 @@ def get_local_ip():
     Get current public IP of server
     :return: string
     """
+
+    '''
+    Other domain can using to get IP:
+    ifconfig.me
+    icanhazip.com
+    ipecho.net/plain
+    ifconfig.co
+    '''
     endpoint = "https://checkip.amazonaws.com/"
 
     return make_request(url=endpoint).strip().decode('utf-8')
