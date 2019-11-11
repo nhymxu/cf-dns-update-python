@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+
+"""
+Dynamic DNS record update utility for CloudFlare DNS service.
+(c) Dung Nguyen (nhymxu)
+"""
+
 import configparser
 import json
 import urllib.error
