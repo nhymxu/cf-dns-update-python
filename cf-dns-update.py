@@ -16,7 +16,7 @@ def make_request(method="GET", url="", request_body=None):
 
     data = None
     if request_body:
-        data = urllib.parse.urlencode(request_body)
+        # data = urllib.parse.urlencode(request_body)
         data = data.encode('ascii')
 
     try:
