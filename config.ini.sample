@@ -1,10 +1,12 @@
 [common]
 CF_API_TOKEN = xxx
 
-[dungnt.net]
+[dungnt.net-test-section]
 zone_id = xxx
-record = test.dungnt.net
+base_domain = dungnt.net
+records = @|test1|test2
 
-[nhymxu.info]
+[nhymxu.info-test-section]
 zone_id = xxx
-record = yyy.nhymxu.info
+base_domain = nhymxu.info
+records = yyy|zzz
