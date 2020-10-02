@@ -13,7 +13,18 @@ from configparser import ConfigParser
 from os import path
 
 
+CF_API_TOKEN = ''
+
+
 def make_request(method="GET", url="", request_body=None):
+    """
+    Send API request ( json type )
+
+    :param method:
+    :param url:
+    :param request_body:
+    :return:
+    """
     headers = {
         'Authorization': "Bearer {}".format(CF_API_TOKEN),
         'Content-Type': 'application/json'
@@ -58,6 +69,7 @@ def get_local_ip():
 
 def get_old_ip():
     """
+    Get old public IP if exist
 
     :return:
     """
@@ -71,6 +83,12 @@ def get_old_ip():
 
 
 def save_old_ip(ip):
+    """
+    Write current public IP to file
+
+    :param ip:
+    :return:
+    """
     with open('old_ip.txt', 'w+') as fp:
         fp.write(ip)
 
@@ -78,6 +96,9 @@ def save_old_ip(ip):
 def get_record_id(zone_id, record_name):
     """
     Get CloudFlare record id from domain/sub-domain name
+
+    :param zone_id:
+    :param record_name:
     :return:
     """
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records?name={}&type=A".format(
@@ -96,7 +117,15 @@ def get_record_id(zone_id, record_name):
     return False
 
 
-def update_host(zone_id, record_name):
+def update_host(zone_id, record_name, public_ip):
+    """
+    Update host to CloudFlare
+
+    :param zone_id:
+    :param record_name:
+    :param public_ip:
+    :return:
+    """
     record_id = get_record_id(zone_id, record_name)
 
     if not record_id:
@@ -129,47 +158,50 @@ def update_host(zone_id, record_name):
     return True
 
 
-config_file = 'config.ini'
+def get_config():
+    """
+    Read and parsing config from ini file.
+    Set global var CF_API_TOKEN
 
-if not path.exists(config_file):
-    raise RuntimeError("config file not found")
+    :return:
+    """
+    global CF_API_TOKEN
 
-config = ConfigParser()
-config.read(config_file)
+    config_file = 'config.ini'
 
-if "common" not in config:
-    raise Exception("Common config not found.")
+    if not path.exists(config_file):
+        raise RuntimeError("config file not found")
 
-if "CF_API_TOKEN" not in config['common'] or not config['common']['CF_API_TOKEN']:
-    raise Exception("Missing CloudFlare API Token on config file")
+    config = ConfigParser()
+    config.read(config_file)
 
-CF_API_TOKEN = config['common']['CF_API_TOKEN']
+    if "common" not in config:
+        raise Exception("Common config not found.")
 
-config_sections = config.sections()
-config_sections.remove("common")
+    if "CF_API_TOKEN" not in config['common'] or not config['common']['CF_API_TOKEN']:
+        raise Exception("Missing CloudFlare API Token on config file")
 
-if not config_sections:
-    raise Exception("Empty site to update DNS")
+    CF_API_TOKEN = config['common']['CF_API_TOKEN']
 
-public_ip = get_local_ip()
-print("Public IP: {}".format(public_ip))
-if public_ip == get_old_ip():
-    print("Skip update")
-    exit()
+    config_sections = config.sections()
+    config_sections.remove("common")
 
-for domain in config_sections:
-    print("--- Updating {} ---".format(domain))
+    if not config_sections:
+        raise Exception("Empty site to update DNS")
 
-    if "base_domain" not in config[domain] or not config[domain]["base_domain"]:
-        print("Not found `base_domain` config on section `{}`".format(domain))
-        continue
+    return config, config_sections
 
-    if "records" not in config[domain] or not config[domain]["records"]:
-        print("Not found `records` config on section `{}`".format(domain))
-        continue
 
-    base_domain = config[domain]["base_domain"].strip()
-    record_list = config[domain]["records"].strip().split("|")
+def process_section(section_data, public_ip):
+    """
+    Process all record in section
+
+    :param section_data:
+    :param public_ip:
+    :return:
+    """
+    base_domain = section_data["base_domain"].strip()
+    record_list = section_data["records"].strip().split("|")
 
     for record in record_list:
         record = record.strip()
@@ -177,10 +209,34 @@ for domain in config_sections:
         if record != '@':
             dns_record = "{}.{}".format(record, base_domain)
 
-        update_host(config[domain]['zone_id'], dns_record)
+        update_host(section_data['zone_id'], dns_record, public_ip)
 
-print("Save old IP")
-save_old_ip(public_ip)
+
+def main():
+    config, config_sections = get_config()
+
+    public_ip = get_local_ip()
+    print("Public IP: {}".format(public_ip))
+    if public_ip == get_old_ip():
+        print("Skip update")
+        exit()
+
+    for section in config_sections:
+        print("--- Updating {} ---".format(section))
+
+        if "base_domain" not in config[section] or not config[section]["base_domain"]:
+            print("Not found `base_domain` config on section `{}`".format(section))
+            continue
+
+        if "records" not in config[section] or not config[section]["records"]:
+            print("Not found `records` config on section `{}`".format(section))
+            continue
+
+        process_section(section_data=config[section], public_ip=public_ip)
+
+    print("Save old IP")
+    save_old_ip(public_ip)
+
 
 if __name__ == "__main__":
-    pass
+    main()
