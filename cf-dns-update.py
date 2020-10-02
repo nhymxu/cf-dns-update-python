@@ -5,11 +5,11 @@ Dynamic DNS record update utility for CloudFlare DNS service.
 (c) Dung Nguyen (nhymxu)
 """
 
-import configparser
 import json
 import urllib.error
 import urllib.parse
 import urllib.request
+from configparser import ConfigParser
 from os import path
 
 
@@ -134,7 +134,7 @@ config_file = 'config.ini'
 if not path.exists(config_file):
     raise RuntimeError("config file not found")
 
-config = configparser.ConfigParser()
+config = ConfigParser()
 config.read(config_file)
 
 if "common" not in config:
@@ -159,7 +159,28 @@ if public_ip == get_old_ip():
 
 for domain in config_sections:
     print("--- Updating {} ---".format(domain))
-    update_host(config[domain]['zone_id'], config[domain]['record'])
+
+    if "base_domain" not in config[domain] or not config[domain]["base_domain"]:
+        print("Not found `base_domain` config on section `{}`".format(domain))
+        continue
+
+    if "records" not in config[domain] or not config[domain]["records"]:
+        print("Not found `records` config on section `{}`".format(domain))
+        continue
+
+    base_domain = config[domain]["base_domain"].strip()
+    record_list = config[domain]["records"].strip().split("|")
+
+    for record in record_list:
+        record = record.strip()
+        dns_record = base_domain
+        if record != '@':
+            dns_record = "{}.{}".format(record, base_domain)
+
+        update_host(config[domain]['zone_id'], dns_record)
 
 print("Save old IP")
 save_old_ip(public_ip)
+
+if __name__ == "__main__":
+    pass

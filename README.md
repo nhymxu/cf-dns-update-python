@@ -49,13 +49,9 @@ CF_API_TOKEN = token_key_here
 
 1. Look at step **3** on section `Create CloudFlare Token`
 2. Copy `Zone ID`
-3. Add to `config.ini` like this:
+3. Edit like sample
 
-```ini
-[dungnt.net]
-zone_id = zone_id_here
-record = test.dungnt.net
-```
+Note: `@` will be same as `base_domain`
 
 ### Auto running
 
