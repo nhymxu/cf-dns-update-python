@@ -5,6 +5,7 @@ Dynamic DNS record update utility for CloudFlare DNS service.
 (c) Dung Nguyen (nhymxu)
 """
 
+import argparse
 import json
 import urllib.error
 import urllib.parse
@@ -129,6 +130,7 @@ def update_host(zone_id, record_name, public_ip):
     record_id = get_record_id(zone_id, record_name)
 
     if not record_id:
+        print("Record not found")
         return False
 
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}".format(
@@ -158,7 +160,7 @@ def update_host(zone_id, record_name, public_ip):
     return True
 
 
-def get_config():
+def get_config(config_path='config.ini'):
     """
     Read and parsing config from ini file.
     Set global var CF_API_TOKEN
@@ -167,13 +169,11 @@ def get_config():
     """
     global CF_API_TOKEN
 
-    config_file = 'config.ini'
-
-    if not path.exists(config_file):
+    if not path.exists(config_path):
         raise RuntimeError("config file not found")
 
     config = ConfigParser()
-    config.read(config_file)
+    config.read(config_path)
 
     if "common" not in config:
         raise Exception("Common config not found.")
@@ -212,8 +212,14 @@ def process_section(section_data, public_ip):
         update_host(section_data['zone_id'], dns_record, public_ip)
 
 
-def main():
-    config, config_sections = get_config()
+def main(args):
+    """
+    Argument from input
+
+    :param args:
+    :return:
+    """
+    config, config_sections = get_config(config_path=args.config)
 
     public_ip = get_local_ip()
     print("Public IP: {}".format(public_ip))
@@ -239,4 +245,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    nx_parser = argparse.ArgumentParser(
+        prog='cf-dns-update',
+        usage='%(prog)s [options] --config config_path',
+        description='Dynamic DNS record update utility for CloudFlare DNS service.'
+    )
+    nx_parser.add_argument('--config', action='store', type=str, default='config.ini')
+
+    input_args = nx_parser.parse_args()
+
+    main(args=input_args)
