@@ -15,6 +15,7 @@ from os import path
 
 
 CF_API_TOKEN = ''
+IS_DRYRUN = False
 
 
 def make_request(method="GET", url="", request_body=None):
@@ -209,6 +210,10 @@ def process_section(section_data, public_ip):
         if record != '@':
             dns_record = "{}.{}".format(record, base_domain)
 
+        if IS_DRYRUN:
+            print("[DRY RUN] Update record `{}` in zone id `{}`".format(dns_record, section_data['zone_id']))
+            continue
+
         update_host(section_data['zone_id'], dns_record, public_ip)
 
 
@@ -222,12 +227,14 @@ def main(args):
     config, config_sections = get_config(config_path=args.config)
 
     public_ip = get_local_ip()
-    print("Public IP: {}".format(public_ip))
-    if public_ip == get_old_ip():
+    print("")
+    print("--- Public IP: {}".format(public_ip))
+    if not IS_DRYRUN and public_ip == get_old_ip():
         print("Skip update")
         exit()
 
     for section in config_sections:
+        print("")
         print("--- Updating {} ---".format(section))
 
         if "base_domain" not in config[section] or not config[section]["base_domain"]:
@@ -240,8 +247,9 @@ def main(args):
 
         process_section(section_data=config[section], public_ip=public_ip)
 
-    print("Save old IP")
-    save_old_ip(public_ip)
+    if not IS_DRYRUN:
+        print("Save old IP")
+        save_old_ip(public_ip)
 
 
 if __name__ == "__main__":
@@ -251,7 +259,10 @@ if __name__ == "__main__":
         description='Dynamic DNS record update utility for CloudFlare DNS service.'
     )
     nx_parser.add_argument('--config', action='store', type=str, default='config.ini')
+    nx_parser.add_argument('--dryrun', '--check', action='store_true')
 
     input_args = nx_parser.parse_args()
+
+    IS_DRYRUN = input_args.dryrun
 
     main(args=input_args)
