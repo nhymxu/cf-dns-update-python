@@ -51,7 +51,9 @@ CF_API_TOKEN = token_key_here
 2. Copy `Zone ID`
 3. Edit like sample
 
-Note: `@` will be same as `base_domain`
+Notes: 
+  - `@` will be same as `base_domain`
+  - To proxy a record, include it in both `records` and `proxied_records`
 
 ### Auto running
 
