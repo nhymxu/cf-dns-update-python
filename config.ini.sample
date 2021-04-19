@@ -5,8 +5,10 @@ CF_API_TOKEN = xxx
 zone_id = xxx
 base_domain = dungnt.net
 records = @|test1|test2
+proxied_records = @|test2
 
 [nhymxu.info-test-section]
 zone_id = xxx
 base_domain = nhymxu.info
 records = yyy|zzz
+proxied_records = 
