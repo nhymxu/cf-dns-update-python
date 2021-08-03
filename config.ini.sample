@@ -11,4 +11,3 @@ proxied_records = @|test2
 zone_id = xxx
 base_domain = nhymxu.info
 records = yyy|zzz
-proxied_records = 
