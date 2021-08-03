@@ -204,7 +204,7 @@ def process_section(section_data, public_ip):
     """
     base_domain = section_data["base_domain"].strip()
     record_list = section_data["records"].strip().split("|")
-    proxied_record_list = section_data["proxied_records"].strip().split("|")
+    proxied_record_list = section_data["proxied_records"].strip().split("|") if "proxied_records" in section_data else ""
 
     for record in record_list:
         record = record.strip()
