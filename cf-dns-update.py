@@ -126,6 +126,7 @@ def update_host(zone_id, record_name, public_ip, is_proxied):
     :param zone_id:
     :param record_name:
     :param public_ip:
+    :param is_proxied:
     :return:
     """
     record_id = get_record_id(zone_id, record_name)
