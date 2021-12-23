@@ -119,13 +119,14 @@ def get_record_id(zone_id, record_name):
     return False
 
 
-def update_host(zone_id, record_name, public_ip):
+def update_host(zone_id, record_name, public_ip, is_proxied):
     """
     Update host to CloudFlare
 
     :param zone_id:
     :param record_name:
     :param public_ip:
+    :param is_proxied:
     :return:
     """
     record_id = get_record_id(zone_id, record_name)
@@ -142,7 +143,8 @@ def update_host(zone_id, record_name, public_ip):
     payload = {
         "type": "A",
         "name": record_name,
-        "content": public_ip
+        "content": public_ip,
+        "proxied": is_proxied
     }
 
     response = make_request(
@@ -203,10 +205,12 @@ def process_section(section_data, public_ip):
     """
     base_domain = section_data["base_domain"].strip()
     record_list = section_data["records"].strip().split("|")
+    proxied_record_list = section_data["proxied_records"].strip().split("|") if "proxied_records" in section_data else ""
 
     for record in record_list:
         record = record.strip()
         dns_record = base_domain
+        is_proxied = False
         if record != '@':
             dns_record = "{}.{}".format(record, base_domain)
 
@@ -214,7 +218,10 @@ def process_section(section_data, public_ip):
             print("[DRY RUN] Update record `{}` in zone id `{}`".format(dns_record, section_data['zone_id']))
             continue
 
-        update_host(section_data['zone_id'], dns_record, public_ip)
+        if record in proxied_record_list:
+            is_proxied = True
+
+        update_host(section_data['zone_id'], dns_record, public_ip, is_proxied)
 
 
 def main(args):
