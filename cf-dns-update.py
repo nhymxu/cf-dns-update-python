@@ -16,6 +16,7 @@ from os import path
 
 CF_API_TOKEN = ''
 IS_DRYRUN = False
+PUBLIC_IP_SERVICE = 'amazonaws'
 
 
 def make_request(method="GET", url="", request_body=None):
@@ -57,14 +58,17 @@ def get_local_ip():
     :return: string
     """
 
-    '''
-    Other domain can using to get IP:
-    ifconfig.me
-    icanhazip.com
-    ipecho.net/plain
-    ifconfig.co
-    '''
-    endpoint = "https://checkip.amazonaws.com/"
+    svc_list = {
+        'amazonaws': 'https://checkip.amazonaws.com/',
+        'ifconfig.me': 'https://ifconfig.me/ip',
+        'icanhazip.com': 'https://icanhazip.com/',
+        'ipecho': 'https://ipecho.net/plain',
+    }
+
+    if PUBLIC_IP_SERVICE not in svc_list:
+        raise ValueError("Unknown service")
+
+    endpoint = svc_list[PUBLIC_IP_SERVICE]
 
     return make_request(url=endpoint).strip().decode('utf-8')
 
@@ -171,6 +175,7 @@ def get_config(config_path='config.ini'):
     :return:
     """
     global CF_API_TOKEN
+    global PUBLIC_IP_SERVICE
 
     if not path.exists(config_path):
         raise RuntimeError("config file not found")
@@ -185,6 +190,9 @@ def get_config(config_path='config.ini'):
         raise Exception("Missing CloudFlare API Token on config file")
 
     CF_API_TOKEN = config['common']['CF_API_TOKEN']
+
+    if config['common'].get('CHECK_IP_SERVICE'):
+        PUBLIC_IP_SERVICE = config['common']['CHECK_IP_SERVICE']
 
     config_sections = config.sections()
     config_sections.remove("common")
@@ -235,7 +243,8 @@ def main(args):
 
     public_ip = get_local_ip()
     print("")
-    print("--- Public IP: {}".format(public_ip))
+    print("--- [{}] Public IP: {}".format(PUBLIC_IP_SERVICE, public_ip))
+
     if not IS_DRYRUN and public_ip == get_old_ip():
         print("Skip update")
         exit()
