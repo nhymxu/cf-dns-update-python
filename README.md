@@ -9,11 +9,11 @@ Dynamic DNS record update utility for CloudFlare DNS service. Python implement
 ### Download & Setup
 
 #### Download
-Download code from Release page. 
+Download code from Release page.
 
 Link here: [https://github.com/nhymxu/cf-dns-update-python/releases/latest](https://github.com/nhymxu/cf-dns-update-python/releases/latest)
 
-Or 
+Or
 
 clone repo using git:
 
@@ -51,7 +51,7 @@ CF_API_TOKEN = token_key_here
 2. Copy `Zone ID`
 3. Edit like sample
 
-Notes: 
+Notes:
   - `@` will be same as `base_domain`
   - To proxy a record, include it in both `records` and `proxied_records`
 
@@ -72,3 +72,23 @@ And add this line to end of file
 ```
 
 This script will run each 15 minutes.
+
+### Service get public IP
+
+If you want custom what service to get public IP, you can config in `config.ini` file
+
+Sample
+
+```ini
+[common]
+CHECK_IP_SERVICE = xxx
+```
+
+where xxx is service name listed below
+
+| Name | Endpoint |
+| ---- | -------- |
+| amazonaws | https://checkip.amazonaws.com |
+| ifconfig.me | https://ifconfig.me/ip |
+| icanhazip | https://icanhazip.com/ |
+| ipecho | https://ipecho.net/plain |
