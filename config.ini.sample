@@ -1,5 +1,6 @@
 [common]
 CF_API_TOKEN = xxx
+CHECK_IP_SERVICE = amazonaws  # optinal, can delete if not using
 
 [dungnt.net-test-section]
 zone_id = xxx
