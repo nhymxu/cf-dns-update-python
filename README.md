@@ -55,6 +55,27 @@ Notes:
   - `@` will be same as `base_domain`
   - To proxy a record, include it in both `records` and `proxied_records`
 
+#### Command line options
+
+| Option | Description |
+| ------ | ----------- |
+| `--config` | Path to config file (default `config.ini`) |
+| `--dryrun`, `--check` | Only print records and zone id, without updating |
+| `--force` | Update records even if they already point to current public IP |
+
+### How update is skipped
+
+The last applied public IP is cached in `old_ip.txt`. On each run:
+
+1. If the current public IP equals the cached one, nothing is sent to CloudFlare at all.
+2. Otherwise, each record is compared with its live CloudFlare content and only updated when different.
+
+Because of the cache, manual edits to a record are not self-healed. Delete `old_ip.txt`, or run with `--force`, to update anyway:
+
+```shell
+./run.sh --force
+```
+
 ### Auto running
 
 I want my script auto running every `x` minutes. So I need set up cronjob for it.
