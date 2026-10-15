@@ -16,7 +16,9 @@ from os import path
 
 CF_API_TOKEN = ''
 IS_DRYRUN = False
+IS_FORCE = False
 PUBLIC_IP_SERVICE = 'amazonaws'
+OLD_IP_FILE = 'old_ip.txt'
 
 
 def make_request(method="GET", url="", request_body=None):
@@ -75,41 +77,41 @@ def get_local_ip():
 
 def get_old_ip():
     """
-    Get old public IP if exist
+    Get last applied public IP from cache file, if exist
 
-    :return:
+    :return: string or None
     """
-    old_ip = None
+    if not path.exists(OLD_IP_FILE):
+        return None
 
-    if path.exists("old_ip.txt"):
-        with open('old_ip.txt', 'r') as fp:
-            old_ip = fp.read().strip()
-
-    return old_ip
+    with open(OLD_IP_FILE, 'r') as fp:
+        return fp.read().strip()
 
 
 def save_old_ip(ip):
     """
-    Write current public IP to file
+    Write current public IP to cache file
 
     :param ip:
     :return:
     """
-    with open('old_ip.txt', 'w+') as fp:
+    with open(OLD_IP_FILE, 'w+') as fp:
         fp.write(ip)
 
 
-def get_record_id(zone_id, record_name):
+def get_dns_record(zone_id, record_name, record_type='A'):
     """
-    Get CloudFlare record id from domain/sub-domain name
+    Get CloudFlare DNS record object from domain/sub-domain name
 
     :param zone_id:
     :param record_name:
-    :return:
+    :param record_type:
+    :return: record object, or False if not found
     """
-    endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records?name={}&type=A".format(
+    endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records?name={}&type={}".format(
         zone_id,
-        record_name
+        record_name,
+        record_type
     )
     response = make_request("GET", endpoint)
     data = json.loads(response)
@@ -117,36 +119,30 @@ def get_record_id(zone_id, record_name):
         return False
 
     for record in data['result']:
-        if record['name'] == record_name:
-            return record['id']
+        if record['name'] == record_name and record['type'] == record_type:
+            return record
 
     return False
 
 
-def update_host(zone_id, record_name, public_ip, is_proxied):
+def update_host(zone_id, record, public_ip, is_proxied):
     """
     Update host to CloudFlare
 
     :param zone_id:
-    :param record_name:
+    :param record: current CloudFlare DNS record object
     :param public_ip:
     :param is_proxied:
     :return:
     """
-    record_id = get_record_id(zone_id, record_name)
-
-    if not record_id:
-        print("Record not found")
-        return False
-
     endpoint = "https://api.cloudflare.com/client/v4/zones/{}/dns_records/{}".format(
         zone_id,
-        record_id
+        record['id']
     )
 
     payload = {
-        "type": "A",
-        "name": record_name,
+        "type": record['type'],
+        "name": record['name'],
         "content": public_ip,
         "proxied": is_proxied
     }
@@ -159,10 +155,10 @@ def update_host(zone_id, record_name, public_ip, is_proxied):
     data = json.loads(response)
 
     if not data['success']:
-        print("Failed to update {}:{}".format(record_name, public_ip))
+        print("Failed to update {}:{}".format(record['name'], public_ip))
         return False
 
-    print("Success update {}:{}".format(record_name, public_ip))
+    print("Success update {}:{}".format(record['name'], public_ip))
 
     return True
 
@@ -209,11 +205,13 @@ def process_section(section_data, public_ip):
 
     :param section_data:
     :param public_ip:
-    :return:
+    :return: True if no record failed to update
     """
     base_domain = section_data["base_domain"].strip()
     record_list = section_data["records"].strip().split("|")
     proxied_record_list = section_data["proxied_records"].strip().split("|") if "proxied_records" in section_data else ""
+
+    is_success = True
 
     for record in record_list:
         record = record.strip()
@@ -229,7 +227,20 @@ def process_section(section_data, public_ip):
         if record in proxied_record_list:
             is_proxied = True
 
-        update_host(section_data['zone_id'], dns_record, public_ip, is_proxied)
+        current_record = get_dns_record(section_data['zone_id'], dns_record)
+
+        if not current_record:
+            print("Record `{}` not found".format(dns_record))
+            continue
+
+        if not IS_FORCE and current_record['content'] == public_ip:
+            print("Skip update `{}`: already points to {}".format(dns_record, public_ip))
+            continue
+
+        if not update_host(section_data['zone_id'], current_record, public_ip, is_proxied):
+            is_success = False
+
+    return is_success
 
 
 def main(args):
@@ -245,9 +256,11 @@ def main(args):
     print("")
     print("--- [{}] Public IP: {}".format(PUBLIC_IP_SERVICE, public_ip))
 
-    if not IS_DRYRUN and public_ip == get_old_ip():
-        print("Skip update")
-        exit()
+    if not IS_DRYRUN and not IS_FORCE and public_ip == get_old_ip():
+        print("Skip update: IP not changed")
+        return
+
+    is_success = True
 
     for section in config_sections:
         print("")
@@ -261,9 +274,10 @@ def main(args):
             print("Not found `records` config on section `{}`".format(section))
             continue
 
-        process_section(section_data=config[section], public_ip=public_ip)
+        if not process_section(section_data=config[section], public_ip=public_ip):
+            is_success = False
 
-    if not IS_DRYRUN:
+    if not IS_DRYRUN and is_success:
         print("Save old IP")
         save_old_ip(public_ip)
 
@@ -276,9 +290,11 @@ if __name__ == "__main__":
     )
     nx_parser.add_argument('--config', action='store', type=str, default='config.ini')
     nx_parser.add_argument('--dryrun', '--check', action='store_true')
+    nx_parser.add_argument('--force', action='store_true')
 
     input_args = nx_parser.parse_args()
 
     IS_DRYRUN = input_args.dryrun
+    IS_FORCE = input_args.force
 
     main(args=input_args)
